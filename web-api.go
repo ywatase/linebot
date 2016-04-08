@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -53,9 +54,16 @@ func apiRequest(w http.ResponseWriter, r *http.Request) {
 	// JSON return
 	defer func() {
 		// result
+		err := postMessage(ret)
+		if err != nil {
+			fmt.Println(err) //TODO: change to log
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
 		outjson, err := json.Marshal(ret)
 		if err != nil {
 			fmt.Println(err) //TODO: change to log
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, string(outjson))
@@ -96,6 +104,35 @@ func apiRequest(w http.ResponseWriter, r *http.Request) {
 	//         }
 	//     }
 
+}
+
+func postMessage(apiRes ApiResponse) (err error){
+	paramBytes, err := json.Marshal(apiRes)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", "https://trialbot-api.line.me/v1/events", bytes.NewReader(paramBytes))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("X-Line-ChannelID", "1462234830")
+	req.Header.Set("X-Line-ChannelSecret", "73d0eee6bb5721b60055b7d067c33383")
+	req.Header.Set("X-Line-Trusted-User-With-ACL", "u0c08bbc74380a164ae5111714d7a1161")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+//     body, err := ioutil.ReadAll(resp.Body)
+//     if err != nil {
+//         return err
+//     }
+	return nil
 }
 
 func hello(res http.ResponseWriter, req *http.Request) {
